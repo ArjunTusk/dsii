@@ -1,4 +1,3 @@
-
 class Node:
     def __init__(self, key, value):
         self.key = key
@@ -33,14 +32,20 @@ class HasTable:
             self.table[index] = new_node
             self.size += 1
 
+    def returnline(self, a):
+        index = self._hash(a)
+        apple= self.table[index]
+        self.remove(apple.key)
+        return str(apple.key)
+
     def __str__(self):
         elements = []
         for i in range(self.capacity):
-         current = self.table[i]
-        while current:
-            elements.append((current.key, current.value))
-            current = current.next
-        return str(elements)+"\n"
+            current = self.table[i]
+            while current:
+                elements.append((current.key, current.value))
+                current = current.next
+        return str(elements)
 
     def search(self, key):
         index = self._hash(key)
@@ -75,7 +80,7 @@ class HasTable:
     def __len__(self):
         return self.size
 
-    def __contains__(self, key):
+    def contains(self, key):
         try:
             self.search(key)
             return True

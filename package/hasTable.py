@@ -34,18 +34,18 @@ class HasTable:
 
     def returnline(self, a):
         index = self._hash(a)
-        apple= self.table[index]
+        apple = self.table[index]
         self.remove(apple.key)
         return str(apple.key)
 
-    def __str__(self):
+    def to_array(self):
         elements = []
         for i in range(self.capacity):
             current = self.table[i]
             while current:
                 elements.append((current.key, current.value))
                 current = current.next
-        return str(elements)
+        return elements
 
     def search(self, key):
         index = self._hash(key)
@@ -56,7 +56,7 @@ class HasTable:
                 return current.value
             current = current.next
 
-        raise KeyError(key)
+        return False
 
     def remove(self, key):
         index = self._hash(key)

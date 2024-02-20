@@ -1,12 +1,13 @@
 import csv
-import bundle_add
+from datetime import datetime, timedelta
 
 
 class Truck:
     def __init__(self, file):
 
         self.currentHaul = []
-        self.size = 0
+        self.on_road = datetime(2024, 2, 15, 8, 0)
+        self.sizTwo = len(self.currentHaul)
         self.file = file
         self.size = 28
         self.location = 0
@@ -25,7 +26,7 @@ class Truck:
             for line in toParse:
                 for g in range(self.size):
                     if g != 0 and line[g] != "":
-                        self.matrix[xx][g] = float(line[g].replace("\n", "").strip(" "))
+                        self.matrix[xx][int(g)] = float(line[g].replace("\n", "").strip(" "))
                     elif line[g].find("(") != -1:
                         a = line[g].replace("\n", "").strip(" ")
                         self.matrix[xx][g] = a[0:a.index("(")]
@@ -33,22 +34,29 @@ class Truck:
                         continue
                     else:
                         self.matrix[xx][g] = line[g].replace("\n", "").strip(" ")
-
                 xx += 1
 
         self.matrix[0][0] = "4001 South 700 East"
-        ll = 1
-        for i in range(0, 27):
-            for j in range(1, 28):
-                if self.matrix[i][j] == -1:
-                    self.matrix[i][j] = self.matrix[j - 1][ll]
-            ll += 1
+        for col2 in range(27):
+            for row2 in range(28):
+                if self.matrix[col2][row2] == -1:
+                    self.matrix[col2][row2] = self.matrix[row2 - 1][col2 + 1]
 
     # Accepts a list and adds each item to the truck contained
     def add(self, package):
-        for i in range(len(package)):
-            self.currentHaul.append(package[i])
-            self.size += 1
+        if len(self.currentHaul) < 16:
+            if len(package) == 7:
+                self.currentHaul.extend([package])
+            else:
+                self.currentHaul += package
+        else:
+            print("Sorry! Too full. Deliver or remove some packages first.")
+
+    def set_time(self, time):
+        self.on_road = time
+
+    def get_time(self):
+        return self.on_road
 
     # Removes all packages at once
     def removePackage(self):
@@ -65,80 +73,73 @@ class Truck:
         for i in self.currentHaul:
             print(i)
 
-    def listofAddresses(self):
-        listt = []
-        for i in self.currentHaul:
-            listt.append(i[0])
-        return listt
+    def wherenext(self, addresses):
+        min_time = datetime.strptime(addresses[0][4], "%I:%M %p")
+        time_format = "%I:%M %p"
+        final_dest_time = 0
+        final_dest = 0
+        swap = ""
+        fin_miles = 0
+        found = False
+        addresses.insert(0, ["4001 South 700 East"])
 
-    # finds and returns indexes of 2 addresses
-    def nearest_neighbor_deliver(self, start):
-        num_locations = len(self.matrix)
-        visited = set()
-        path = [start[0]]
-        current_location = start
-        for _ in range(num_locations - 1):
-            nearest_location = self.find_nearest_neighbor(current_location, visited)
-            path.append(nearest_location)
-            visited.add(nearest_location)
-            current_location = nearest_location
-
-    def find_nearest_neighbor(self, current_location, visited):
-        pass
-
-    def findTheAdresses(self, addresses):
-        print()
-        start = addresses[0][0]
-        next_stop = addresses[1][0]
-        start_miles = 0
-        b = len(self.matrix) - 1
-        a = 0
-        next_stop_miles = 0
-        popop = 0
-        for j in range(b):
-            if self.matrix[j][0] == start and a == 0:
-                a = j
-            if self.matrix[j][0] == next_stop:
-                next_stop_miles = j
-            if self.matrix[b - j][0] == next_stop:
-                next_stop_miles = b - j
-            if self.matrix[b - j][0] == start:
-                a = b - j
-        last_stop = next_stop_miles
-        popop = self.matrix[a][next_stop_miles]
-        for z in addresses:
-            if z[0] == start:
+        for i in range(len(addresses) - 2):
+            next_dest = addresses[i + 1][0]
+            min_time = datetime.strptime(addresses[i + 1][4], "%I:%M %p")
+            min_dist = self.find_dist(addresses[i][0], next_dest)
+            for j in range(i + 1, len(addresses) - 1):
+                if addresses[i][0] == addresses[j][0]:
+                    print("Dropping package off in the same location")
+                    found = True
+                    swap = addresses[i + 1]
+                    addresses[i + 1] = addresses[j]
+                    addresses[j] = swap
+                    break
+                tyrit = self.find_dist(addresses[i][0], addresses[j][0])
+                new_time = datetime.strptime(addresses[j][4], time_format)
+                if new_time <= min_time:
+                    min_time = new_time
+                    final_dest_time = j
+                    fin_miles = tyrit
+                if tyrit < min_dist:
+                    min_dist = tyrit
+                    final_dest = j
+            if found:
+                found = False
                 continue
+            if min_time.strftime("%I:%M %p") != "11:59 PM":
+                time_hours = fin_miles / 18
+                self.on_road += timedelta(hours=time_hours)
+                print("From", addresses[i][0], "To", addresses[final_dest_time][0], "which is",
+                      fin_miles, "miles away. Expected Delivery:", addresses[final_dest_time][4], "Expected arrival",
+                      self.on_road.strftime("%I:%M %p"))
+                swap = addresses[i + 1]
+                addresses[i + 1] = addresses[final_dest_time]
+                addresses[final_dest_time] = swap
             else:
-                next_stop = z[0]
-                for f in range(int(b / 2) - 2):
-                    if self.matrix[f][0] == next_stop:
-                        last_stop = f
-                        break
-                    if self.matrix[b - f][0] == next_stop:
-                        last_stop = b - f
-                        break
-                c = self.matrix[a][last_stop]
-                if popop > c:
-                    popop = c
-                    start_miles = last_stop
-        print(self.matrix[start_miles][0], " ", popop)
+                time_hours = min_dist / 18
+                self.on_road += timedelta(hours=time_hours)
+                print("From", addresses[i][0], "to", addresses[final_dest][0], "which is",
+                      min_dist, addresses[final_dest][4], "miles away. Expected arrival",
+                      self.on_road.strftime("%I:%M %p"))
+                swap = addresses[i + 1]
+                addresses[i + 1] = addresses[final_dest]
+                addresses[final_dest] = swap
+        print()
+        a = self.find_dist("4001 South 700 East", swap[0])
+        time_hours = a / 18
+        self.on_road += timedelta(hours=time_hours)
+        print("We are returning to HUB. Last Stop was",
+              swap[0], ". Distance from HUB is",
+              a, "miles away. Arrival Time:", self.on_road.strftime("%I:%M %p"))
+        print()
 
-
-"""
-    def findTheAddresses(self,  adresses):
-        poopo = []
-        start = adresses[0]
-        nearest_location = adresses[1]
-        # Grabs the location of the required cell
-        for k in range(0, 26):
-            if self.matrix[k][0] == start:
-                poopo.append(k)
-            if self.matrix[k][0] == nearest_location:
-                print(self.matrix[k][0] == addressTwo)
-                poopo.append(k)
-            if len(poopo) > 2:
-                break
-
-        return poopo
-"""
+    def find_dist(self, start, end):
+        column_num = 0
+        row_num = 0
+        for i in range(len(self.matrix)):
+            if self.matrix[i][0] == start:
+                column_num = i
+            if self.matrix[i][0] == end:
+                row_num = i
+        return self.matrix[column_num][row_num + 1]

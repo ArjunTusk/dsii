@@ -1,4 +1,6 @@
 import csv
+from datetime import datetime, timedelta
+
 import hasTable
 
 
@@ -19,6 +21,8 @@ class Parse:
         with open(file) as f:
             toParse = csv.reader(f, delimiter=',', quotechar="\"")
             for line in toParse:
+                if line[5] == "EOD":
+                    line[5] = "11:59 PM"
                 self.pack_table.insert(i, line[1:])
                 i += 1
 
@@ -51,29 +55,34 @@ class Parse:
                 seen_it.add(int(is_num[1]))
 
         for m in seen_it:
-            bundle_items.append(self.pack_table.search(m))
+            bundle_items += [self.pack_table.search(m)]
             self.ignore_it.add(m)
 
+        bundle_items = sorted(bundle_items, key=lambda a: datetime.strptime(a[4], "%I:%M %p"))
         return bundle_items
 
     def remove_it(self):
         for value in self.ignore_it:
             self.pack_table.remove(value)
 
-    # checks to see if the package is delayed then puts it into a list. The delayed package is then removed
-    def bundle_package_string(self, which_package):
+    # checks to see if string matches. Adds to bundled_package if true
+    def bundle_package_string(self, which_package, num):
         bundled_package = []
         loop_length = (40 / 2) + 1
         for i in range(1, int(loop_length)):
             the_item = self.pack_table.search(i)
             the_other_item = self.pack_table.search(40 - i)
-            if which_package in the_other_item[6]:
-                bundled_package.append(the_other_item)
+            if not the_item:
+                break
+            if the_other_item == False:
+                break
+            if which_package in the_other_item[num]:
+                bundled_package += [the_other_item]
                 self.ignore_it.add(40 - i)
             if i in self.ignore_it:
                 continue
-            if which_package in the_item[6]:
-                bundled_package.append(the_item)
+            if which_package in the_item[num]:
+                bundled_package += [the_item]
                 self.ignore_it.add(i)
 
         return bundled_package

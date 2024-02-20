@@ -6,13 +6,13 @@ class Node:
 
 
 class HasTable:
-    def __init__(self, capacity):
-        self.capacity = capacity
+    def __init__(self, inventory):
+        self.inventory = inventory
         self.size = 0
-        self.table = [None] * capacity
+        self.table = [None] * inventory
 
     def _hash(self, key):
-        return hash(key) % self.capacity
+        return hash(key) % self.inventory
 
     def insert(self, key, value):
         index = self._hash(key)
@@ -40,7 +40,7 @@ class HasTable:
 
     def to_array(self):
         elements = []
-        for i in range(self.capacity):
+        for i in range(self.inventory):
             current = self.table[i]
             while current:
                 elements.append((current.key, current.value))

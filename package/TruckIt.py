@@ -1,21 +1,30 @@
 import csv
 from datetime import datetime, timedelta
 
+from package.package_items import NewPackage
+
 
 class Truck:
     def __init__(self, file):
-
-        self.currentHaul = []
-        self.on_road = datetime(2024, 2, 15, 8, 0)
+        self.mid_zip = 0
+        self.first_loc = NewPackage("0", "4001 South 700 East", "", "", 84107, "", "", "")
+        self.currentHaul = [self.first_loc]
+        self.overflow = []
+        self.on_road = datetime(1900, 1, 1, 8, 0)
         self.sizTwo = len(self.currentHaul)
+        self.miles_driven = 0
         self.file = file
         self.size = 28
-        self.location = 0
+        self.speed = 18
+        self.total_packages_delivered = 0
         self.matrix = [[-1 for columns in range(self.size)] for rows in range(self.size - 1)]
         self.readPopMatrix()
 
     def return_current_haul(self):
         return self.currentHaul
+
+    def mid_zip(self):
+        return 0
 
     def readPopMatrix(self):
         a = ""
@@ -45,12 +54,30 @@ class Truck:
     # Accepts a list and adds each item to the truck contained
     def add(self, package):
         if len(self.currentHaul) < 16:
-            if len(package) == 7:
-                self.currentHaul.extend([package])
+            if isinstance(package, NewPackage):
+                self.currentHaul.append(package)
+                self.total_packages_delivered += 1
+
             else:
+                self.total_packages_delivered += len(package)
                 self.currentHaul += package
         else:
             print("Sorry! Too full. Deliver or remove some packages first.")
+
+        if len(self.currentHaul) > 16:
+            self.overflow = self.currentHaul[17:]
+            self.currentHaul = self.currentHaul[:16]
+        else:
+            self.currentHaul.extend(self.overflow)
+        a = self.currentHaul[0]
+        self.currentHaul = sorted(self.currentHaul[1:], key=lambda newpackage: newpackage.zipcode)
+        if len(self.currentHaul) >= 2:
+            self.mid_zip = self.currentHaul[int(self.sizeIt() / 2)].zipcode
+            self.currentHaul.insert(0, a)
+        else:
+            self.currentHaul.insert(0, a)
+            self.mid_zip = self.currentHaul[0].zipcode
+        return 1
 
     def set_time(self, time):
         self.on_road = time
@@ -59,10 +86,6 @@ class Truck:
         return self.on_road
 
     # Removes all packages at once
-    def removePackage(self):
-        for i in range(len(self.currentHaul)):
-            self.currentHaul.pop()
-            self.size -= 1
 
     # Returns the amount of packages currently in the hall
     def sizeIt(self):
@@ -73,66 +96,71 @@ class Truck:
         for i in self.currentHaul:
             print(i)
 
-    def wherenext(self, addresses):
-        min_time = datetime.strptime(addresses[0][4], "%I:%M %p")
-        time_format = "%I:%M %p"
-        final_dest_time = 0
-        final_dest = 0
-        swap = ""
-        fin_miles = 0
-        found = False
-        addresses.insert(0, ["4001 South 700 East"])
-
-        for i in range(len(addresses) - 2):
-            next_dest = addresses[i + 1][0]
-            min_time = datetime.strptime(addresses[i + 1][4], "%I:%M %p")
-            min_dist = self.find_dist(addresses[i][0], next_dest)
-            for j in range(i + 1, len(addresses) - 1):
-                if addresses[i][0] == addresses[j][0]:
-                    print("Dropping package off in the same location")
-                    found = True
-                    swap = addresses[i + 1]
-                    addresses[i + 1] = addresses[j]
-                    addresses[j] = swap
-                    break
-                tyrit = self.find_dist(addresses[i][0], addresses[j][0])
-                new_time = datetime.strptime(addresses[j][4], time_format)
-                if new_time <= min_time:
-                    min_time = new_time
-                    final_dest_time = j
-                    fin_miles = tyrit
-                if tyrit < min_dist:
-                    min_dist = tyrit
-                    final_dest = j
-            if found:
-                found = False
-                continue
-            if min_time.strftime("%I:%M %p") != "11:59 PM":
-                time_hours = fin_miles / 18
-                self.on_road += timedelta(hours=time_hours)
-                print("From", addresses[i][0], "To", addresses[final_dest_time][0], "which is",
-                      fin_miles, "miles away. Expected Delivery:", addresses[final_dest_time][4], "Expected arrival",
-                      self.on_road.strftime("%I:%M %p"))
-                swap = addresses[i + 1]
-                addresses[i + 1] = addresses[final_dest_time]
-                addresses[final_dest_time] = swap
-            else:
-                time_hours = min_dist / 18
-                self.on_road += timedelta(hours=time_hours)
-                print("From", addresses[i][0], "to", addresses[final_dest][0], "which is",
-                      min_dist, addresses[final_dest][4], "miles away. Expected arrival",
-                      self.on_road.strftime("%I:%M %p"))
-                swap = addresses[i + 1]
-                addresses[i + 1] = addresses[final_dest]
-                addresses[final_dest] = swap
-        print()
-        a = self.find_dist("4001 South 700 East", swap[0])
-        time_hours = a / 18
+    def time_on_road(self, dist_driven):
+        time_hours = dist_driven / self.speed
         self.on_road += timedelta(hours=time_hours)
-        print("We are returning to HUB. Last Stop was",
-              swap[0], ". Distance from HUB is",
-              a, "miles away. Arrival Time:", self.on_road.strftime("%I:%M %p"))
-        print()
+
+    def where_next(self):
+        if self.currentHaul[0].get_address() != "4001 South 700 East":
+            self.currentHaul.insert(0, NewPackage(0, "4001 South 700 East", "", "", 84107, "", "", ""))
+        self.currentHaul = sorted(self.currentHaul[1:], key=lambda newpackage: newpackage.address)
+        self.currentHaul.insert(0, NewPackage(0, "4001 South 700 East", "", "", 84107, "", "", ""))
+        aa = self.currentHaul[1]
+        min_dist = self.find_dist(self.currentHaul[0].get_address(), aa.get_address())
+        length = len(self.currentHaul)
+        while len(self.currentHaul) >2:
+            found = False
+            min_time = self.currentHaul[1].get_delivery_time()
+            for j in range(1, len(self.currentHaul)):
+                if self.currentHaul[0].get_address() == self.currentHaul[j].get_address():
+                    print("We deliver to the same place")
+                    self.currentHaul[j].set_delivery_time(self.on_road)
+                    self.currentHaul.pop(j)
+                    found = True
+                    break
+
+                next_dist = self.find_dist(self.currentHaul[0].get_address(), self.currentHaul[j].get_address())
+                next_time = self.currentHaul[j].get_delivery_time()
+                if min_time >= next_time:
+                    min_time = next_time
+                    if min_dist > next_dist:
+                        min_dist = next_dist
+                        swap = self.currentHaul[1]
+                        self.currentHaul[1] = self.currentHaul[j]
+                        self.currentHaul[j] = swap
+
+            if not found:
+                self.miles_driven += min_dist
+                self.time_on_road(min_dist)
+                print("Start:", self.currentHaul[0].get_address(), "\tEnd:", self.currentHaul[1].get_address(),
+                      "\tExp Delivery:",
+                      self.currentHaul[1].get_delivery_time().strftime('%I:%M %p'), "\tArrival Time:",
+                      self.on_road.strftime('%I:%M %p'))
+                self.currentHaul[1].set_delivery_time(self.on_road)
+                self.currentHaul[1].set_delivery_time(self.on_road)
+                self.currentHaul.pop(0)
+                min_dist = self.find_dist(self.currentHaul[0].get_address(), self.currentHaul[1].get_address())
+                length = len(self.currentHaul)
+
+        min_dist = self.find_dist(self.currentHaul[0].get_address(), self.currentHaul[1].get_address())
+        self.miles_driven += min_dist
+        self.time_on_road(min_dist)
+
+        print("Start:", self.currentHaul[0].get_address(), "\t\tEnd:", self.currentHaul[1].get_address(),
+              "\tExp Delivery:",
+              self.currentHaul[1].get_delivery_time().strftime('%I:%M %p'), "\t\tArrival Time:",
+              self.on_road.strftime('%I:%M %p'))
+
+        self.currentHaul[1].set_delivery_time(self.on_road)
+        self.miles_driven += min_dist
+        self.time_on_road(min_dist)
+        self.currentHaul.pop(0)
+
+        min_dist = self.find_dist(self.currentHaul[0].get_address(), "4001 South 700 East")
+        self.time_on_road(min_dist)
+        print("Start:", self.currentHaul[0].get_address(), "\t\tEnd: 4001 South 700 East",
+              "\tReturning to HUB" "\tArrival Time:", self.on_road.strftime('%I:%M %p'), "\n")
+        self.currentHaul.pop(0)
 
     def find_dist(self, start, end):
         column_num = 0

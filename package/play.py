@@ -1,43 +1,48 @@
-from datetime import datetime, timedelta
-
-import bundle_add
 import TruckIt
 
 from datetime import datetime, timedelta
 
-packageTable = bundle_add.Parse()
+from package import package_items
+
+packageTable = package_items.Parse()
 packageTable.read_files("WGUPS Package File.csv")
 
 oneTruck = TruckIt.Truck("WGUPS Distance Table.csv")
 twoTruck = TruckIt.Truck("WGUPS Distance Table.csv")
 threeTruck = TruckIt.Truck("WGUPS Distance Table.csv")
 
+print(packageTable.size())
 oneTruck.add(packageTable.bundle_package())
-twoTruck.add(packageTable.bundle_package_string("Can", 6))
-threeTruck.add(packageTable.bundle_package_string("Delayed", 6))
-
+twoTruck.add(packageTable.bundle_package_string("Can"))
+threeTruck.add(packageTable.bundle_package_string("Delayed"))
 packageTable.remove_it()
-a = packageTable.size()
-threeTruckTime = datetime(2024, 2, 15, 9, 5)
-threeTruck.set_time(threeTruckTime)
-while a > 10:
-    print("Truck 1:")
-    while oneTruck.sizeIt() < 10 < packageTable.size():
-        oneTruck.add(packageTable.return_line())
-    oneTruck.wherenext(oneTruck.currentHaul)
-    oneTruck.removePackage()
-    print("Truck 2:")
-    while twoTruck.sizeIt() < 10:
-        twoTruck.add(packageTable.return_line())
+print("Loop 0")
+print(packageTable.size())
+a = 0
+while twoTruck.sizeIt() < 16 and packageTable.size() > 0 and a == 0:
+    a = twoTruck.add(packageTable.return_early_pack(datetime(1900, 1, 1, 10, 30)))
 
-    twoTruck.wherenext(twoTruck.currentHaul)
+print("Loop 0")
 
-    twoTruck.removePackage()
+while oneTruck.sizeIt() < 16 and packageTable.size() > 0:
+    oneTruck.add(packageTable.return_line())
 
-    if threeTruck.sizeIt() > 0:
-        print("Truck 3:")
-        threeTruck.set_time(twoTruck.get_time())
-        threeTruck.wherenext(threeTruck.currentHaul)
-        threeTruck.removePackage()
-        oneTruck.add(packageTable.bundle_package_string("Wrong", 6))
-    a = packageTable.size()
+print(twoTruck.sizeIt())
+print(oneTruck.sizeIt())
+print(threeTruck.sizeIt())
+print(packageTable.size())
+print("Truck 2:")
+twoTruck.where_next()
+print("Truck 1:")
+oneTruck.where_next()
+print("Truck 3:")
+threeTruck.set_time(twoTruck.get_time())
+threeTruck.where_next()
+twoTruck.set_time(threeTruck.get_time())
+print(packageTable.size())
+
+while oneTruck.sizeIt() < 16 and packageTable.size() > 0:
+    a = oneTruck.add(packageTable.return_line())
+
+oneTruck.where_next()
+print(oneTruck.miles_driven + twoTruck.miles_driven + threeTruck.miles_driven)

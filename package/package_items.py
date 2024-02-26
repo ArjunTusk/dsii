@@ -19,11 +19,14 @@ class NewPackage:
         self.notes = notes
         self.delivered = datetime(1900, 1, 1, 8, 0)
 
-    def set_delivery_time(self, delivered):
+    def set_delivered(self, delivered):
         self.delivered = delivered
 
+    def get_delivered(self):
+        return self.delivered
+
     def get_delivery_time(self):
-        return self.delivery_time
+        return self.delivery_time.strftime("%I:%M %p")
 
     def get_address(self):
         return self.address
@@ -33,6 +36,11 @@ class NewPackage:
 
     def get_notes(self):
         return self.notes
+
+    def return_all_details(self):
+        return (self.id, " " + self.address + " " + self.city + " " + self.state + " ", self.zipcode
+                , self.delivery_time.strftime("%I:%M %p"), " " + self.weight + " " + self.notes + " ", self.delivered,
+                " ")
 
 
 class Parse:
@@ -153,15 +161,29 @@ class Parse:
         return bungle
 
     # returns the first available package
-    def return_early_pack(self, date):
-        aa = []
+    def return_early_pack(self, delivery):
+        aa = set()
         for i in range(41):
             dd = self.pack_table.search(i)
             if dd:
-                if dd.get_delivery_time() == date:
-                    aa.append(dd)
+                if dd.get_delivery_time() == delivery:
+                    aa.add(dd)
                     self.pack_table.remove(i)
-        return aa
+
+        z = list(self.duplicates(aa))
+
+        return z
+
+    def duplicates(self, aa):
+        bb = set()
+        for j in aa:
+            for i in range(41):
+                dd = self.pack_table.search(i)
+                if dd:
+                    if dd.get_address() == j.get_address():
+                        bb.add(dd)
+                        self.pack_table.remove(i)
+        return aa.union(bb)
 
     def return_line(self):
         dd = self.pack_table.search(self.ipp)

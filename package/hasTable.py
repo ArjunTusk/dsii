@@ -14,6 +14,10 @@ class HasTable:
     def _hash(self, key):
         return hash(key) % self.inventory
 
+    def multi_insert(self, arraya):
+        for i in arraya:
+            self.insert(i.get_id(), i)
+
     def insert(self, key, value):
         index = self._hash(key)
 

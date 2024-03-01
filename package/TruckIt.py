@@ -7,12 +7,9 @@ from package.package_items import NewPackage
 class Truck:
     def __init__(self, file, truck_num):
         self.truck_num = truck_num
-        self.mid_zip = 0
         self.first_loc = NewPackage("0", "4001 South 700 East", "", "", 84107, "", "", "")
         self.currentHaul = [self.first_loc]
-        self.overflow = []
         self.on_road = datetime(1900, 1, 1, 8, 0)
-        self.sizTwo = len(self.currentHaul)
         self.miles_driven = 0
         self.file = file
         self.size = 28
@@ -21,13 +18,19 @@ class Truck:
         self.matrix = [[-1 for columns in range(self.size)] for rows in range(self.size - 1)]
         self.readPopMatrix()
 
-    # returns the current haul
+    # returns the current list of packages
     def return_current_haul(self):
         return self.currentHaul
 
-    # reads the double matrix and populates the 2d - array
+    # Process: reads the double matrix and populates the 2d - array
+    # Flow : reads the file. Splits the file while ignoring anything surrounded by quotes
+    # Flow : Starts a for loop with the second line in toParse
+    # Flow : Starts another for loop that will go from 0 to self.size
+    # Flow : check if g doesn't equal 0 and line[g] isn't empty. If satisfied edit line[g] and input it into the matrix[xx][gg]
+    # Flow : continue if line [g] == "" is empty.  If there's a ")" in line[g] the remove the parenthesis and insert it into matrix[xx][g]
+    # Flow : else strip line[g] and input it into matrix[xx][g].
+
     def readPopMatrix(self):
-        a = ""
         xx = 0
         with open(self.file) as f:
             toParse = csv.reader(f, delimiter=',', quotechar="\"")
@@ -44,14 +47,19 @@ class Truck:
                     else:
                         self.matrix[xx][g] = line[g].replace("\n", "").strip(" ")
                 xx += 1
-
+# Flow swap HUB for "4001 South 700 East" then duplicate the numbers so there are no empty cells in self.matrix
         self.matrix[0][0] = "4001 South 700 East"
         for col2 in range(27):
             for row2 in range(28):
                 if self.matrix[col2][row2] == -1:
                     self.matrix[col2][row2] = self.matrix[row2 - 1][col2 + 1]
 
-    # Accepts a list and adds each item to the truck contained
+    # Process: Accepts a list and adds each item to the truck contained
+    # Flow : pass package to the method. Check that the len(self.currentHaul)-1 < 16
+    # Flow : if yes then check if package is an instance of NewPackage
+    # Flow : if yes then append the package to self.currentHaul. Increase self.total_packages_delivered by 1
+    # Flow : if not an instance of NewPackage then just add it all to the self.currentHaul
+    # Flow : if the len(self.currentHaul)-1 < 16 is false then print("Sorry! Too full. Deliver or remove some packages first.")
     def add(self, package):
         if len(self.currentHaul) - 1 < 16:
             if isinstance(package, NewPackage):
@@ -63,21 +71,6 @@ class Truck:
                 self.currentHaul += package
         else:
             print("Sorry! Too full. Deliver or remove some packages first.")
-
-        if len(self.currentHaul) - 1 > 16:
-            self.overflow = self.currentHaul[17:]
-            self.currentHaul = self.currentHaul[:16]
-        else:
-            self.currentHaul.extend(self.overflow)
-        a = self.currentHaul[0]
-        self.currentHaul = sorted(self.currentHaul[1:], key=lambda newpackage: newpackage.zipcode)
-        if len(self.currentHaul) - 1 >= 2:
-            self.mid_zip = self.currentHaul[int(self.sizeIt() / 2)].zipcode
-            self.currentHaul.insert(0, a)
-        else:
-            self.currentHaul.insert(0, a)
-            self.mid_zip = self.currentHaul[0].zipcode
-        return 1
 
     # returns the time the truck leaves a destination
     def set_time(self, time):
@@ -101,12 +94,23 @@ class Truck:
         time_hours = dist_driven / self.speed
         self.on_road += timedelta(hours=time_hours)
 
-    # delivers the packages based on distance. Swaps the second array item with the nearest destination. Prints out
-    # the start and end times
+    # Process: Accepts a list. Iterates through list to determine which address is closest to the 0th element.
+    # 0th element is then removed.
+    # Flow : prints truck number and departure time
+    # Flow : Prints that the truck is empty if len(self.currentHaul) == 1
+    #  grabs the distance between the 0th and 1st element and set it as the minimum distance
+    # Flow : loops through the 1st to last element. Checking each element against the 0th element.
+    # Flow : if any element has the same address as the 0th element then the for loop is broken
+    # Flow : else checks if 0 to latest element distance is smaller than 0 to 1st element.
+    # Flow : If yes then the latest element will be the next destination for the truck
+    # Flow : After self.current_haul is reduced to one package. The truck is returned
+    # Flow : Distance traveled is updated as is time on_road. Returns the array package history
+
     def where_next(self):
-        aa = []
+        print("\nTruck #", self.truck_num, "left HUB at", self.on_road.strftime("%I:%M %p"))
+        package_history = []
         j = 0
-        print("\nTruck #", self.truck_num, "on the road:")
+
         if len(self.currentHaul) == 1:
             print("Truck is empty! Please add packages.")
         # checks which truck is closest to the current destination until it gets to the last package
@@ -124,12 +128,10 @@ class Truck:
 
             # delivers the last package
             self.time_on_road(min_dist)
-            print("Start:", self.currentHaul[0].get_address(), "\tEnd:", self.currentHaul[j].get_address(), end="\t")
-            print("Delivery Time: ", self.currentHaul[j].get_delivery_time(), "Arrival Time:",
-                  self.get_time().strftime("%I:%M %p"))
             self.miles_driven += min_dist
-            self.currentHaul[0].set_delivered(self.get_time().strftime("%I:%M %p"))
-            aa.append(self.currentHaul[0])
+            self.currentHaul[j].set_delivered(self.get_time().strftime("%I:%M %p"))
+            self.currentHaul[j].set_truck_num(self.truck_num)
+            package_history.append(self.currentHaul[j])
             self.currentHaul.pop(0)
             swap = self.currentHaul[0]
             self.currentHaul[0] = self.currentHaul[j - 1]
@@ -138,14 +140,14 @@ class Truck:
         # returns to the HUB
         self.currentHaul.insert(1, NewPackage("0", "4001 South 700 East", "", "", 84107, "", "", ""))
         self.time_on_road(self.find_dist(self.currentHaul[0].get_address(), self.currentHaul[1].get_address()))
-        print("Start:", self.currentHaul[0].get_address(), "\tEnd:", self.currentHaul[1].get_address(), end="\t")
-        print("Return to HUB", "Arrival Time:", self.get_time().strftime("%I:%M %p"))
-        self.currentHaul[0].set_delivered(self.get_time().strftime("%I:%M %p"))
-        aa.append(self.currentHaul[0])
+        print("Route Complete! Miles driven:", self.miles_driven, "Returned to HUB at", self.on_road.strftime("%I:%M "
+                                                                                                              "%p"))
+        package_history.append(self.currentHaul[0])
         self.currentHaul.pop(0)
-        return aa
+        return package_history
 
-    # finds the distance between two addresses by searching the 2-d array
+    # Process: finds the distance between two addresses by searching the 2-d array
+    # Flow : For loop iterates through the matrix to find the cross-section where the distance between two locations are
     def find_dist(self, start, end):
         column_num = 0
         row_num = 0

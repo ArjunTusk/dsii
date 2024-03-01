@@ -11,13 +11,26 @@ class HasTable:
         self.size = 0
         self.table = [None] * inventory
 
+    # Process : Takes the key, hashes it, and ensures that the resulting hash value is within the hash table size
+    # Flow : hash the key modulo it by the self.inventory then return it.
     def _hash(self, key):
         return hash(key) % self.inventory
 
+    # Process : inserts multiple items into the hash table from an array passed to the method.
+    # Flow : for i in array check that i's address isn't 4001 South 700 East. If it is not then get
+    # Flow : i's id and insert it and i's value into the table
     def multi_insert(self, arraya):
         for i in arraya:
-            self.insert(i.get_id(), i)
+            if i.get_address() != "4001 South 700 East":
+                self.insert(i.get_id(), i)
 
+    # Process : uses the key variable passed to it insert a value into the hash table
+    # Flow : set index to the hash value of the key. If the table is empty then insert the key/value as the first item
+    # Flow : and increase the size. Else, set the current pointer to the value at that index
+    # Flow : while there are items in the list check if any key in the table matches the key passed into the method
+    # Flow : return if there is a matching key. If not set the pointer to current.next. Create a new node using the
+    # Flow : key and value passed into the method. Set the new node to the position at table[index]. Set the next ptr
+    # Flow : for the new node to self.table[index]. Increase the size by 1
     def insert(self, key, value):
         index = self._hash(key)
 
@@ -36,21 +49,10 @@ class HasTable:
             self.table[index] = new_node
             self.size += 1
 
-    def returnline(self, a):
-        index = self._hash(a)
-        apple = self.table[index]
-        self.remove(apple.key)
-        return str(apple.key)
-
-    def to_array(self):
-        elements = []
-        for i in range(self.inventory):
-            current = self.table[i]
-            while current:
-                elements.append((current.key, current.value))
-                current = current.next
-        return elements
-
+    # Process : accepts a key then searches the hash table for the key and returns its value
+    # Flow : sets the index to be the hash value of the key variable. Set the pointer to the key at that index
+    # Flow : Loop through the hash table. If the current.key == key then return the value at that key
+    # Flow : if no key currently matches a key in the table then return false
     def search(self, key):
         index = self._hash(key)
 
@@ -62,6 +64,9 @@ class HasTable:
 
         return False
 
+    # Loops through each key starting from the top. When the matching Key is found it checks if it is previous
+    # If yes then sets previous.next to current.next else self.table[index] = current.next. Decrease self.size by 1
+    # If key can't be found the raises  KeyError
     def remove(self, key):
         index = self._hash(key)
 
@@ -83,10 +88,3 @@ class HasTable:
 
     def __len__(self):
         return self.size
-
-    def contains(self, key):
-        try:
-            self.search(key)
-            return True
-        except KeyError:
-            return False
